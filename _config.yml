@@ -3,9 +3,8 @@ title: Matcha00
 subtitle: 努力努力努力
 welcome_message: <a href="#" target="_blank">我是陈欢</a>
 description: iOS Android 前端 Python
-creator: <a href="http://onev.cat">@onevcat</a>
+creator: <a href="http://matcha00.me">@Matcha00</a>
 
-url: "http://vno.onevcat.com"
 
 permalink: /:year/:month/:title/
 
@@ -37,8 +36,8 @@ comment:
     
 # Social
 social:
-    weibo: Matcha00000
-    github: woshicainiaoma
+    weibo: Matcha000000
+    github: Matcha00
     twitter: themeow00
     mail: chmatcha00@gmail.com
 
