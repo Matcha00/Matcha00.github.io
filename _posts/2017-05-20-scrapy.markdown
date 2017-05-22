@@ -1,0 +1,237 @@
+---
+layout: post
+titile: scrpay入门必备
+date: 2017-05-20 15:32:24.000000000 +09:00
+---
+
+####项目简介
+项目起源于我的毕设，基于python的美国专利信息获取系统，根据输入关键词下载所需要的专利信息并存储到数据库。
+####项目使用技术
+* scrapy爬虫框架
+* python编程语言
+* mongo数据库
+* xpath获取网页结构
+
+####项目介绍
+
+##### 网页结构介绍  
+![网页结构](/assets/images/2017/Snip20170522_6.png)
+上图是网页基本结构，可能是由于非商业性网站所以USPTO网站基本都是由table、hr、br、center等标签构成，所以对于我们入门降低了难度。
+上图是我们输入关键词led后搜索结果，根据需求我们要获取每个链接下的网页内容，分析网页结构发现所有链接都在table表格下的td标签中，所以通过一个for循环遍历所有链接并且拼接http://patft.uspto.gov这链接然后构造新的URL
+#### 爬虫介绍
+ 
+    name = uspto
+    allowed_domains = ["http://patft.uspto.gov"]
+    keyword = input("请输入搜索关键词:")
+    '''构建搜索URL'''
+    search_url = 'http://patft.uspto.gov/netacgi/nph-Parser?Sect1=PTO2&Sect2=HITOFF&p=1&u=%2Fnetahtml%2FPTO%2Fsearch-' \
+                  'bool.html&r=0&f=S&l=50&TERM1=' + keyword + '&FIELD1=&co1=AND&TERM2=&FIELD2=&d=PTXT'
+
+    start_urls = [
+        search_url,
+    ]
+* name： 用于区别Spider，该名字必须唯一
+* start_url 包含了Spider在启动时进行爬取的url列表。 因此，第一个被获取到的页面将是其中之一。 后续的URL则从初始的URL获取到的数据中提取。
+* parse() 是spider的一个方法。 被调用时，每个初始URL完成下载后生成的 Response 对象将会作为唯一的参数传递给该函数。 该方法负责解析返回的数据(response data)，提取数据(生成item)以及生成需要进一步处理的URL的 Request 对象。
+* keyword是全局变量获取用户输入关键词构建URL
+
+ def parse(self, response):
+        #print(response.text)
+
+        # test = response.xpath('/html/body/table//tr/td[last()]/a/@href')
+        # print(test)
+
+        for href in response.xpath('/html/body/table//tr/td[last()]/a/@href'):
+
+            url_href = href.extract()
+
+            #print("xpath", url_href)
+
+            url = 'http://patft.uspto.gov' + url_href
+            #logging.info("hh",url)
+            #print("chenhuan",url)
+
+            yield scrapy.Request(url,callback=self.parse_show,dont_filter=True)
+
+            next_page = response.xpath('/html/body/form[1]/@action').extract()
+            sect1_name = response.xpath('/html/body/form[1]/input[1]/@value').extract()
+            sect2_name = response.xpath('/html/body/form[1]/input[2]/@value').extract()
+            u_name = response.xpath('/html/body/form[1]/input[3]/@value').extract()
+            r_name = response.xpath('/html/body/form[1]/input[4]/@value').extract()
+            f_name = response.xpath('/html/body/form[1]/input[5]/@value').extract()
+            l_name = response.xpath('/html/body/form[1]/input[6]/@value').extract()
+            d_name = response.xpath('/html/body/form[1]/input[7]/@value').extract()
+            os_name = response.xpath('/html/body/form[1]/input[8]/@value').extract()
+            rs_name = response.xpath('/html/body/form[1]/input[9]/@value').extract()
+            query_name = response.xpath('/html/body/form[1]/input[10]/@value').extract()
+            td_name = response.xpath('/html/body/form[1]/input[10]/@value').extract()
+            srch1_name = response.xpath('/html/body/form[1]/input[10]/@value').extract()
+            list_name = response.xpath('/html/body/form[1]/input[11]/@name').extract()
+            next_name = response.xpath('/html/body/form[1]/input[last()]/@value').extract()
+            next_list = response.xpath('/html/body/form[1]/input[last()]/@name').extract()
+
+            #print(next_page[0])
+
+            #print(next_name,sect1_name,sect2_name,u_name,r_name,f_name,l_name,d_name,os_name,rs_name,query_name,td_name,srch1_name)
+            '''自动翻页'''
+            if next_page[0]:
+                url_next = 'http://patft.uspto.gov' + next_page[0] + '?Sect1=' + sect1_name[0] + '&Sect2=' + sect2_name[0] + '&u=' + u_name[0] + '&r=' + r_name[0] + '&f=' + f_name[0] + '&l=' + l_name[0] + '&d=' + d_name[0] + '&OS=' + os_name[0] + '&RS=' + rs_name[0] + '&Query=' + query_name[0] + '&TD=' + td_name[0] + '&Srch1=' + srch1_name[0] + '&' + next_list[0] + '=' + next_name[0]
+                print(url_next)
+                yield scrapy.Request(url_next,callback=self.parse,dont_filter=True)
+
+            else:
+                print('There is no page')
+                              
+* for循环遍历table下td标签链接 yield递归请求新产生的URL，每次访问的链接通过parse_show函数解析专利详细信息，dont_filter=True访问链接不必遵循allowed_domains
+
+        def parse_show(self,response):
+
+
+        us = 'U.S. Patent Documents'
+        otherR = 'Other References'
+        prior = 'Prior Publication Data'
+        relatde ='Related U.S. Patent Documents'
+        foreign = 'Foreign Patent Documents'
+        usXpath = ''
+        otXpath = ''
+        priorXpath = ''
+        foreignXpath = ''
+        relatdeXpath = ''
+        '''动态判断网页结构'''
+        centerWork = response.xpath('//center/b/text()').extract()
+
+        for i, val in enumerate(centerWork):
+            if val == otherR:
+                t = i + 3
+                otXpath = '/html/body/table[' + str(t) + ']'
+                print(i,val)
+                #logging.debug("us->" + usXpath)
+            else:
+                pass
+            if val == us:
+                t = i + 3
+                usXpath = '/html/body/table[' + str(t) + ']'
+            else:
+                pass
+
+            if val == prior:
+
+                t = i +3
+                priorXpath = '/html/body/table[' + str(t) + ']'
+            else:
+                pass
+
+            if val == foreign:
+
+                t = i + 3
+                foreignXpath = '/html/body/table[' + str(t) + ']'
+            else:
+                pass
+
+            if val == relatde:
+
+                t =i +3
+                relatdeXpath = '/html/body/table[' + str(t) + ']'
+            else:
+                pass
+            '''解析引用专利信息'''
+            for href in response.xpath(usXpath +'//tr/td[1]/a[not(@target) and (@href)]'):
+
+                if href:
+
+                 url_href = href.extract()
+
+                # print("xpath", url_href)
+
+                 url = 'http://patft.uspto.gov' + url_href
+                 print(usXpath)
+                 yield scrapy.Request(url,callback=self.us_patent,dont_filter=True)
+                else:
+                    pass
+            '''解析app网站链接'''
+            for hrefTwo in response.xpath(usXpath +'//tr/td[1]/a[(@target) and (@href)]'):
+
+                if hrefTwo:
+
+                    url_hreft = hrefTwo.extract()
+                    urlTwo = url_hreft
+                    yield scrapy.Request(urlTwo,self.referencesCited(),dont_filter= True)
+                else:
+                    pass
+
+            '''获取被引用链接'''
+            refBy = response.xpath('//center/b/a/@href').extract()[0]
+
+            if refBy:
+
+                url_ref = 'http://patft.uspto.gov' + refBy
+                scrapy.Request(url_ref,callback=self.referencesBy,dont_filter=True)
+            else:
+                pass
+
+        # for url in response.xpath(usXpath + '//tr/td[1]/a/@href'):
+        #     url_href = url.extract()
+        #
+        #     print(url_href)
+
+        item = UsptoItem()
+
+        item['us_patent_id'] = response.xpath('/html/body/table[2]/tr[1]/td[2]/b/text()').extract()
+        item['galle_et_al'] = response.xpath('/html/body/table[2]/tr[2]/td[2]/b/text()').extract()
+        ad = response.xpath('/html/body/p[1]/text()').extract()
+        while "\n" in ad:
+            ad.remove("\n")
+        item['abstract'] = ad
+        #item['inventors'] =  response.xpath('/html/body/table[3]/tr[1]/td[1]/text()|/html/body/table[3]/tr[1]/td[1]/b/text()').extract()
+        data = response.xpath('/html/body/table[3]/tr[1]/td[1]|/html/body/table[3]/tr[1]/td[1]/b')
+        info = data.xpath('string(.)').extract()[0]
+        item['inventors'] = info
+
+        #item['applicant'] = response.xpath('/html/body/table[3]/tr[2]/td/table/tr[2]/td[1]/b/text()').extract()
+        #item['name'] = response.xpath().extract('/html/body/table[3]/tr[2]/td/table/tr[2]/td[2]/b/text()')
+        # item['city'] = response.xpath('/html/body/table[3]/tr[2]/td/table/tr[2]/td[3]/text()').extract()
+        # item['state_country_type'] = response.xpath('/html/body/table[3]/tr[2]/td/table/tr[2]/td[4]/text()').extract()
+        # item['assignee'] = response.xpath('/html/body/table[3]/tr[3]/td/b/text()').extract()
+        item['family_id'] = response.xpath('/html/body/table[3]/tr[last()-2]/td/b/text()').extract()
+        item['appl_no'] = response.xpath('/html/body/table[3]/tr[last()-1]/td/b/text()').extract()
+        item['filed'] = response.xpath('/html/body/table[3]/tr[last()]/td/b/text()').extract()
+        item['document_identifier'] = response.xpath(priorXpath + '/tr[3]/td[2]/text()').extract()
+        item['publication_date'] = response.xpath(priorXpath +'/tr[3]/td[3]/text()').extract()
+        # # item['current_us_class']
+        # # item['current_cpc_class']
+        # # item['current_international_class']
+        # # item['field_of_search']
+        # # item['other_references']
+
+        #print(item)
+
+
+        item['otherReferences'] = response.xpath(otXpath +'/tr/td//text()[1]').extract()
+
+        yield  item
+        
+* parse_show函数根据定义Item对象，并通过xpath解析网页结构信息存储到item对象中去
+    
+    
+        class UsptoPipeline(object):
+         def __init__(self):
+        clinet = pymongo.MongoClient("localhost",      27017)
+        db_name = input("name:")
+        db = clinet["UsptoHub"]
+        print(keyword)
+        self.PhRes = db[db_name]
+
+        def process_item(self, item, spider):
+        print('MongoDBItem', item)
+
+        while "\n" in item['abstract']:
+            item['abstract'].remove("\n")
+        """ 判断类型 存入MongoDB """
+        if isinstance(item, UsptoItem):
+            print ('PornVideoItem True')
+            try:
+                self.PhRes.update({'us_patent_id': item['us_patent_id']}, {'$set': dict(item)}, True)
+            except Exception:
+                pass
+        return item
+* 存储到Mongo
