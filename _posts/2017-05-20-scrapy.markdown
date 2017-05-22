@@ -4,17 +4,17 @@ titile: scrpay入门必备
 date: 2017-05-20 15:32:24.000000000 +09:00
 ---
 
-###项目简介
+### 项目简介
 项目起源于我的毕设，基于python的美国专利信息获取系统，根据输入关键词下载所需要的专利信息并存储到数据库。
 
 
-###项目使用技术
+### 项目使用技术
 * scrapy爬虫框架
 * python编程语言
 * mongo数据库
 * xpath获取网页结构
 
-###项目介绍
+### 项目介绍
 
 ##### 网页结构介绍  
 ![网页结构](/assets/images/2017/Snip20170522_6.png)
@@ -37,7 +37,7 @@ date: 2017-05-20 15:32:24.000000000 +09:00
 * parse() 是spider的一个方法。 被调用时，每个初始URL完成下载后生成的 Response 对象将会作为唯一的参数传递给该函数。 该方法负责解析返回的数据(response data)，提取数据(生成item)以及生成需要进一步处理的URL的 Request 对象。
 * keyword是全局变量获取用户输入关键词构建URL
 
- def parse(self, response):
+        def parse(self, response):
         #print(response.text)
 
         # test = response.xpath('/html/body/table//tr/td[last()]/a/@href')
