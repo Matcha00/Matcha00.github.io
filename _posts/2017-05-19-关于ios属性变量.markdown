@@ -1,0 +1,40 @@
+---
+layout: post
+titile: 关于ios属性变量set方法get方法
+date: 2017-05-19 15:32:24.000000000 +09:00
+---
+
+#### oc 变量、属性、set、get记录
+
+```
+
+#import "ViewController.h"
+
+@interface ViewController ()
+{
+    NSString *variable;  //成员变量
+}
+
+@property (nonatomic, copy) NSMutableArray *testArray;
+@end
+NSString *str = @"全局变量";
+@implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    
+    NSMutableArray *array = [NSMutableArray arrayWithObjects:@"1",@"2", nil];
+    
+    _testArray = array; // 此处是实例变量赋值 没有经过set和get方法  改为self.testArray = array 就会奔溃
+    
+    [self.testArray removeObjectAtIndex:0];
+    NSLog(@"%@", self.testArray);
+    
+    //输出是2
+    
+    // Do any additional setup after loading the view, typically from a nib.
+}
+
+```
+##### 如果是懒加载用self.属性才会走重写get方法
